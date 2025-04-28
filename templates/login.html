@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вход - Интерактивная Карта</title>
+    <!-- Подключение CSS (если нужно, но пока только HTML) -->
+    <!-- <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"> -->
+    <!-- <link rel="stylesheet" href="путь/к/вашим/стилям/login.css"> -->
+</head>
+<body>
+
+    <div class="login-container">
+        <h2>Вход в аккаунт</h2>
+
+        <!-- Форма для отправки данных на сервер -->
+        <!-- Атрибуты method="post" и action="URL_ДЛЯ_ОБРАБОТКИ_ЛОГИНА" должны быть настроены -->
+        <form method="post" action="/auth/login"> {# Пример URL, используйте url_for в Flask #}
+
+            <div class="form-group">
+                <label for="username">Имя пользователя:</label>
+                <!-- Атрибут name="username" используется сервером для получения значения -->
+                <input type="text" id="username" name="username" required>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Пароль:</label>
+                <!-- Атрибут name="password" используется сервером -->
+                <input type="password" id="password" name="password" required>
+            </div>
+
+            <button type="submit" class="login-button">Войти</button>
+        </form>
+
+        <div class="register-link">
+            <p>Еще нет аккаунта? <a href="/auth/register">Зарегистрируйтесь</a></p> {# Пример URL #}
+        </div>
+
+         <!-- Область для отображения сообщений об ошибках (если будут передаваться с сервера) -->
+         <div class="flash-messages">
+             <!-- Сообщения об ошибках будут здесь -->
+         </div>
+
+    </div>
+
+</body>
+</html>

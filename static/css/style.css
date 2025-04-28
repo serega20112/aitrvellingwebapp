@@ -1,0 +1,588 @@
+/* static/css/style.css */
+
+/* --- Базовые стили и сброс --- */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html, body {
+    height: 100%;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    line-height: 1.6;
+    color: #333;
+    background-color: #f4f4f4; /* Легкий фон для страниц не с картой */
+    display: flex;
+    flex-direction: column; /* Для layout.html */
+}
+
+a {
+    color: #007bff;
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+button {
+    cursor: pointer;
+    font-family: inherit;
+    padding: 8px 15px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background-color: #e9e9e9;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+button:hover {
+    background-color: #ddd;
+    border-color: #bbb;
+}
+
+button:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+button i { /* Иконки Font Awesome внутри кнопок */
+    margin-right: 6px;
+}
+
+input[type="text"],
+input[type="password"],
+input[type="email"] { /* Общие стили для полей ввода */
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1em;
+    margin-bottom: 10px; /* Отступ снизу для полей в формах */
+}
+
+input:focus {
+    border-color: #007bff;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+ul {
+    list-style: none; /* Убираем маркеры по умолчанию */
+    padding-left: 0; /* Убираем отступ по умолчанию */
+}
+
+/* --- Структура Layout (layout.html) --- */
+.main-header {
+    background-color: #333;
+    color: #fff;
+    padding: 10px 20px;
+    text-align: center; /* Центрируем заголовок по умолчанию */
+}
+
+.main-header h1 a {
+    color: #fff;
+    text-decoration: none;
+    font-size: 1.5em;
+}
+
+.main-footer {
+    background-color: #333;
+    color: #aaa;
+    text-align: center;
+    padding: 10px 20px;
+    margin-top: auto; /* Прижимаем подвал к низу, если контент короткий */
+    font-size: 0.9em;
+}
+
+.content {
+    flex-grow: 1; /* Основной контент занимает все доступное место */
+    padding: 0; /* Убираем padding для index.html, можно добавить для других страниц */
+    display: flex; /* Чтобы дочерние элементы могли расти */
+    flex-direction: column; /* Для обычных страниц */
+}
+
+/* --- Стили для index.html --- */
+
+/* Заставляем тело index.html вести себя как flex-контейнер */
+body.index-page {
+    /* Переопределяем display из базового body */
+    display: flex;
+    flex-direction: column;
+    height: 100vh; /* Всю высоту окна */
+    overflow: hidden; /* Предотвращаем прокрутку body */
+}
+
+/* Контейнер карты должен занять все оставшееся место */
+body.index-page .content {
+    flex-grow: 1;
+    display: flex; /* Он тоже flex */
+    position: relative; /* Для позиционирования info-panel */
+}
+
+#map-container {
+    flex-grow: 1; /* Занимает все доступное место */
+    position: relative; /* Для позиционирования info-panel */
+}
+
+#map {
+    height: 100%;
+    width: 100%;
+    cursor: crosshair; /* Указатель для клика по карте */
+}
+
+/* Панель управления над картой */
+.controls {
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.85); /* Полупрозрачный фон */
+    border-bottom: 1px solid #ddd;
+    display: flex; /* Кнопки в ряд */
+    flex-wrap: wrap; /* Перенос кнопок, если не влезают */
+    gap: 10px; /* Расстояние между кнопками */
+    align-items: center; /* Вертикальное выравнивание */
+    position: relative; /* Чтобы не перекрывалась панелью */
+    z-index: 900; /* Ниже info-panel */
+}
+
+.user-greeting {
+    margin-left: auto; /* Прижимаем приветствие вправо */
+    font-weight: bold;
+    margin-right: 10px; /* Отступ от кнопок профиля/выхода */
+    color: #555;
+}
+
+/* Информационная панель */
+#info-panel {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 320px; /* Ширина панели */
+    max-width: calc(100% - 20px); /* Не шире экрана */
+    max-height: calc(100% - 20px); /* Не выше экрана */
+    background: rgba(255, 255, 255, 0.95); /* Почти непрозрачный фон */
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    z-index: 1000; /* Выше карты и контролов */
+    overflow-y: auto; /* Прокрутка, если контент не влезает */
+    display: none; /* Изначально скрыта */
+    font-size: 0.9em;
+    transition: transform 0.3s ease-out; /* Плавное появление (если нужно) */
+}
+
+/* Состояние загрузки для панели */
+#info-panel.loading::before {
+    content: 'Загрузка данных...';
+    display: block;
+    text-align: center;
+    padding: 40px 20px;
+    font-style: italic;
+    color: #555;
+    font-size: 1.1em;
+}
+#info-panel.loading > *:not(#close-info-panel) {
+     display: none; /* Скрываем остальное содержимое во время загрузки */
+}
+
+
+#close-info-panel {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: none;
+    border: none;
+    font-size: 1.8em; /* Крупный крестик */
+    line-height: 1;
+    padding: 0 5px;
+    color: #888;
+    cursor: pointer;
+    z-index: 1001; /* Над остальным контентом панели */
+}
+#close-info-panel:hover {
+    color: #333;
+}
+
+/* Стили для элементов внутри инфо-панели */
+#info-panel h2 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-size: 1.3em;
+    color: #333;
+    padding-right: 25px; /* Чтобы текст не залезал под кнопку закрытия */
+}
+#info-panel h3 {
+    margin-top: 20px;
+    margin-bottom: 8px;
+    font-size: 1.1em;
+    color: #555;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 4px;
+}
+#info-panel p {
+    margin-bottom: 15px;
+    line-height: 1.5;
+}
+#info-panel ul {
+    margin-bottom: 15px;
+    padding-left: 5px; /* Небольшой отступ для списков */
+}
+#info-panel li {
+    margin-bottom: 8px;
+    padding-left: 15px; /* Отступ для элементов списка */
+    position: relative;
+}
+/* Маркер для списка деталей */
+#info-details li::before {
+    content: "•"; /* Маркер-точка */
+    position: absolute;
+    left: 0;
+    color: #007bff; /* Цвет маркера */
+    font-weight: bold;
+}
+
+.confidence {
+    font-style: italic;
+    color: #666;
+    font-size: 0.9em;
+    margin-top: 15px;
+    text-align: right;
+}
+.sources li {
+    word-break: break-all; /* Перенос длинных URL */
+    padding-left: 0; /* Убираем доп. отступ у источников */
+}
+.sources li::before {
+     content: ""; /* Убираем маркер у источников */
+}
+
+/* Стили для контейнера схемы */
+#scheme-container {
+    margin-top: 20px;
+    border-top: 1px solid #eee;
+    padding-top: 15px;
+    display: none; /* Скрыт по умолчанию */
+}
+#mermaid-chart {
+    text-align: center; /* Центрируем диаграмму */
+    min-height: 100px; /* Минимальная высота на время загрузки */
+    background-color: #fdfdfd; /* Легкий фон для диаграммы */
+    border: 1px solid #eee;
+    padding: 10px;
+    border-radius: 4px;
+}
+#mermaid-chart svg { /* Делаем SVG отзывчивым */
+    max-width: 100%;
+    height: auto;
+}
+
+#show-scheme-btn {
+    display: block; /* Занимает всю ширину */
+    width: 100%;
+    margin-top: 15px;
+    text-align: center;
+    background-color: #f0f0f0;
+}
+#show-scheme-btn:hover {
+     background-color: #e0e0e0;
+}
+
+/* Стили для отображения рекомендаций (внутри info-panel) */
+#recommendations-area {
+    margin-top: 20px;
+    border-top: 1px solid #eee;
+    padding-top: 15px;
+}
+.recommendation-list {
+    padding: 0;
+}
+.recommendation-item {
+    background: #e9f5ff;
+    border: 1px solid #b3d7ff;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+.recommendation-item:hover {
+    background: #d0eaff;
+}
+.recommendation-item strong {
+    color: #0056b3;
+    display: block;
+    margin-bottom: 3px;
+}
+.recommendation-item span {
+    font-size: 0.9em;
+    color: #444;
+    display: block;
+    margin-bottom: 2px;
+}
+.recommendation-item span:last-child {
+    margin-bottom: 0;
+}
+
+
+/* --- Маркер геолокации пользователя --- */
+.user-location-icon {
+    background-color: #007bff;
+    border: 2px solid white;
+    border-radius: 50%;
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.5);
+    width: 16px !important; /* !important для переопределения Leaflet */
+    height: 16px !important;
+    margin-left: -8px !important; /* Центрирование */
+    margin-top: -8px !important;
+}
+
+.user-location-pulse {
+    background-color: rgba(0, 123, 255, 0.2); /* Прозрачный синий */
+    border-radius: 50%;
+    border: 1px solid rgba(0, 123, 255, 0.4);
+    animation: pulse 1.8s infinite ease-out;
+    width: 40px !important; /* Размер пульсации */
+    height: 40px !important;
+    margin-left: -20px !important; /* Центрирование */
+    margin-top: -20px !important;
+    z-index: -1; /* Под основным маркером */
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(0.8);
+        opacity: 0.5;
+    }
+    50% {
+        opacity: 0.1;
+    }
+    100% {
+        transform: scale(2.5);
+        opacity: 0;
+    }
+}
+
+/* --- Стили для Flash-сообщений --- */
+.flash-messages-container {
+    position: fixed; /* Фиксированное позиционирование */
+    top: 10px; /* Отступ сверху */
+    right: 10px; /* Отступ справа */
+    width: 300px; /* Ширина контейнера */
+    max-width: 90%; /* Не шире экрана */
+    z-index: 2000; /* Выше всего остального */
+}
+
+.flash-alert {
+    padding: 15px;
+    margin-bottom: 10px;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    position: relative; /* Для позиционирования кнопки закрытия */
+    color: #fff; /* Белый текст по умолчанию */
+    box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+}
+
+.flash-alert-success { background-color: #28a745; border-color: #218838; }
+.flash-alert-danger { background-color: #dc3545; border-color: #c82333; }
+.flash-alert-warning { background-color: #ffc107; border-color: #e0a800; color: #333; } /* Темный текст для желтого */
+.flash-alert-info { background-color: #17a2b8; border-color: #138496; }
+
+.close-flash {
+    position: absolute;
+    top: 5px;
+    right: 10px;
+    background: none;
+    border: none;
+    font-size: 1.5em;
+    line-height: 1;
+    color: inherit; /* Цвет текста такой же, как у сообщения */
+    opacity: 0.8;
+    cursor: pointer;
+    padding: 0;
+}
+.close-flash:hover {
+    opacity: 1;
+}
+
+/* --- Стили для страниц аутентификации (login.html, register.html) --- */
+.login-container,
+.register-container {
+    max-width: 400px;
+    margin: 50px auto; /* Центрируем */
+    padding: 30px 40px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background-color: #fff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.login-container h2,
+.register-container h2 {
+    text-align: center;
+    margin-bottom: 25px;
+    color: #333;
+    font-weight: 500;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+    color: #555;
+    font-size: 0.95em;
+}
+
+.login-button,
+.register-button {
+    width: 100%;
+    padding: 12px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 1.1em;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    margin-top: 10px; /* Отступ перед кнопкой */
+}
+.login-button:hover,
+.register-button:hover {
+    background-color: #0056b3;
+}
+
+.register-link,
+.login-link {
+    text-align: center;
+    margin-top: 25px;
+    font-size: 0.95em;
+    color: #555;
+}
+.register-link a,
+.login-link a {
+    color: #007bff;
+}
+
+/* --- Стили для страницы профиля (profile.html) --- */
+.profile-container {
+    max-width: 700px; /* Профиль может быть шире */
+    margin: 40px auto;
+    padding: 30px 40px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background-color: #fff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.profile-container h2 {
+    text-align: center;
+    margin-bottom: 30px;
+    color: #333;
+    font-weight: 500;
+}
+
+.profile-section {
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #eee;
+}
+.profile-section:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.profile-section h3 {
+    font-size: 1.3em;
+    color: #444;
+    margin-bottom: 15px;
+    font-weight: 500;
+}
+
+.profile-section p {
+    margin-bottom: 15px;
+    color: #555;
+}
+
+.interests-list {
+    margin-top: 10px;
+    /* Можно использовать колонки или flex для лучшего отображения */
+    columns: 2; /* Пример: разбить на 2 колонки */
+    column-gap: 30px;
+}
+
+.interest-item {
+    margin-bottom: 12px;
+    display: block; /* Чтобы не ломались колонки */
+}
+
+.interest-item input[type="checkbox"] {
+    margin-right: 10px;
+    width: auto; /* Возвращаем автоширину для чекбоксов */
+    vertical-align: middle; /* Выравниваем с текстом */
+}
+
+.interest-item label {
+    font-weight: normal; /* Обычный шрифт для названий интересов */
+    color: #333;
+    cursor: pointer;
+    vertical-align: middle;
+}
+
+.update-profile-button {
+    width: auto; /* Кнопка не на всю ширину */
+    padding: 10px 25px;
+    background-color: #28a745; /* Зеленый цвет для сохранения */
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 1em;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    margin-top: 20px;
+}
+
+.update-profile-button:hover {
+    background-color: #218838;
+}
+
+
+/* --- Медиа-запросы для адаптивности (Примеры) --- */
+@media (max-width: 768px) {
+    .controls {
+        flex-direction: column; /* Кнопки друг под другом на маленьких экранах */
+        align-items: stretch; /* Растягиваем кнопки */
+    }
+    .user-greeting {
+         margin-left: 0; /* Сбрасываем отступ */
+         margin-bottom: 10px; /* Добавляем отступ снизу */
+         text-align: center;
+    }
+    #info-panel {
+        width: calc(100% - 20px); /* Почти на всю ширину */
+        top: 5px;
+        right: 5px;
+        max-height: 60vh; /* Ограничиваем высоту */
+    }
+    .login-container,
+    .register-container,
+    .profile-container {
+         margin: 20px 15px; /* Меньше отступы */
+         padding: 20px;
+    }
+    .interests-list {
+        columns: 1; /* Одна колонка на мобильных */
+    }
+}
+
+@media (max-width: 480px) {
+     .main-header h1 { font-size: 1.2em;}
+     .controls button { font-size: 0.9em; padding: 6px 10px;}
+     #info-panel { font-size: 0.85em; padding: 15px;}
+     #info-panel h2 { font-size: 1.2em;}
+     #info-panel h3 { font-size: 1em;}
+     .login-container h2,
+     .register-container h2,
+     .profile-container h2 { font-size: 1.3em; }
+}

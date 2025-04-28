@@ -1,0 +1,78 @@
+{% extends 'layout.html' %} {# Расширяем обновленный layout.html #}
+
+{% block title %}Главная Карта - Интерактивная Карта{% endblock %} {# Уточненный заголовок #}
+
+{% block body_class %}index-page{% endblock %} {# Добавляем класс к body для специфичных стилей #}
+
+{% block head_extra %}
+    {# Специфичные стили для карты (если нужны, здесь не требуются т.к. в style.css) #}
+{% endblock %}
+
+
+{% block content %}
+    {# Этот блок содержит только уникальный контент для index.html #}
+
+    <!-- Панель управления -->
+    <div class="controls">
+        <button id="locate-me-btn" title="Найти мое местоположение">
+            <i class="fas fa-location-arrow"></i> Найти меня
+        </button>
+        <button id="show-recs-btn" title="Получить рекомендации для путешествий">
+            <i class="fas fa-lightbulb"></i> Рекомендации
+        </button>
+
+        {% if g.user %}
+            <span class="user-greeting">Привет, {{ g.user['username'] | default('Пользователь') }}!</span>
+            <button id="profile-btn" onclick="location.href='{{ url_for('auth.profile_route') }}'" title="Профиль">
+                <i class="fas fa-user"></i> Профиль
+            </button>
+            <button id="logout-btn" onclick="location.href='{{ url_for('auth.logout_route') }}'" title="Выйти">
+                <i class="fas fa-sign-out-alt"></i> Выйти
+            </button>
+        {% else %}
+            <button id="login-btn" onclick="location.href='{{ url_for('auth.login_route') }}'" title="Войти">
+                <i class="fas fa-sign-in-alt"></i> Войти
+            </button>
+            <button id="register-btn" onclick="location.href='{{ url_for('auth.register_route') }}'" title="Зарегистрироваться">
+                <i class="fas fa-user-plus"></i> Регистрация
+            </button>
+        {% endif %}
+    </div>
+
+    <!-- Контейнер карты и инфо-панели -->
+    <div id="map-container">
+        <div id="map"></div>
+
+        <div id="info-panel">
+            <button id="close-info-panel" title="Закрыть панель">×</button>
+            <h2 id="info-title"></h2>
+            <p id="info-description"></p>
+
+            <h3>Детали:</h3>
+            <ul id="info-details"></ul>
+
+            <div id="scheme-container">
+                <h3>Схема:</h3>
+                <div class="mermaid" id="mermaid-chart"></div>
+            </div>
+
+            <div class="confidence" id="info-confidence"></div>
+
+            <div class="sources">
+                <h3>Источники:</h3>
+                <ul id="info-sources"></ul>
+            </div>
+
+            <div id="recommendations-area"></div>
+
+            <button id="show-scheme-btn">Показать/Скрыть Схему</button>
+        </div>
+    </div>
+
+{% endblock %}
+
+
+{% block scripts %}
+    {# Подключаем основной скрипт карты ТОЛЬКО на этой странице #}
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Регистрация - Интерактивная Карта</title>
+    <!-- Подключение CSS (если нужно) -->
+    <!-- <link rel="stylesheet" href="/static/css/style.css"> -->
+    <!-- <link rel="stylesheet" href="путь/к/вашим/стилям/register.css"> -->
+</head>
+<body>
+
+    <div class="register-container">
+        <h2>Создание аккаунта</h2>
+
+        <!-- Форма для отправки данных на сервер -->
+        <!-- Атрибуты method="post" и action="URL_ДЛЯ_ОБРАБОТКИ_РЕГИСТРАЦИИ" должны быть настроены -->
+        <form method="post" action="/auth/register"> {# Пример URL, используйте url_for в Flask #}
+
+            <div class="form-group">
+                <label for="username">Имя пользователя:</label>
+                <!-- Атрибут name="username" используется сервером -->
+                <input type="text" id="username" name="username" required minlength="3"> {# Добавлено minlength #}
+            </div>
+
+            <div class="form-group">
+                <label for="password">Пароль:</label>
+                <!-- Атрибут name="password" используется сервером -->
+                <input type="password" id="password" name="password" required minlength="6"> {# Добавлено minlength #}
+            </div>
+
+            <div class="form-group">
+                <label for="confirm_password">Подтвердите пароль:</label>
+                <input type="password" id="confirm_password" name="confirm_password" required>
+                {# Проверка совпадения паролей обычно делается через JS или на сервере #}
+            </div>
+
+
+            <button type="submit" class="register-button">Зарегистрироваться</button>
+        </form>
+
+        <div class="login-link">
+            <p>Уже есть аккаунт? <a href="/auth/login">Войдите</a></p> {# Пример URL #}
+        </div>
+
+        <!-- Область для отображения сообщений об ошибках -->
+        <div class="flash-messages">
+            <!-- Сообщения об ошибках регистрации будут здесь -->
+        </div>
+
+    </div>
+
+</body>
+</html>
