@@ -1,0 +1,68 @@
+2025-05-05 17:51:50,182 INFO: Клиент Google Gemini сконфигурирован для модели: gemini-1.5-flash [in c:\Users\Petrov\PycharmProjects\aitrvellingwebapp\aitrvellingwebapp\app.py:247]
+2025-05-05 17:51:50,197 INFO: --- Starting Flask Application --- [in c:\Users\Petrov\PycharmProjects\aitrvellingwebapp\aitrvellingwebapp\app.py:630]
+2025-05-05 17:51:50,197 INFO: Configuration: Debug Mode: OFF, Host: 127.0.0.1, Port: 5000, AI Model: gemini-1.5-flash, Database: C:\Users\Petrov\PycharmProjects\aitrvellingwebapp\aitrvellingwebapp\instance\main.db [in c:\Users\Petrov\PycharmProjects\aitrvellingwebapp\aitrvellingwebapp\app.py:631]
+2025-05-05 17:51:50,197 INFO: Access the app at: http://127.0.0.1:5000 [in c:\Users\Petrov\PycharmProjects\aitrvellingwebapp\aitrvellingwebapp\app.py:634]
+2025-05-05 17:51:50,213 INFO: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000 [in C:\Users\Petrov\PycharmProjects\aitrvellingwebapp\aitrvellingwebapp\venv\lib\site-packages\werkzeug\_internal.py:97]
+2025-05-05 17:51:50,213 INFO: [33mPress CTRL+C to quit[0m [in C:\Users\Petrov\PycharmProjects\aitrvellingwebapp\aitrvellingwebapp\venv\lib\site-packages\werkzeug\_internal.py:97]
+2025-05-05 17:52:02,571 INFO: 127.0.0.1 - - [05/May/2025 17:52:02] "GET / HTTP/1.1" 200 - [in C:\Users\Petrov\PycharmProjects\aitrvellingwebapp\aitrvellingwebapp\venv\lib\site-packages\werkzeug\_internal.py:97]
+2025-05-05 17:52:02,602 INFO: 127.0.0.1 - - [05/May/2025 17:52:02] "GET /static/js/script.js HTTP/1.1" 200 - [in C:\Users\Petrov\PycharmProjects\aitrvellingwebapp\aitrvellingwebapp\venv\lib\site-packages\werkzeug\_internal.py:97]
+2025-05-05 17:52:02,604 INFO: 127.0.0.1 - - [05/May/2025 17:52:02] "GET /static/css/style.css HTTP/1.1" 200 - [in C:\Users\Petrov\PycharmProjects\aitrvellingwebapp\aitrvellingwebapp\venv\lib\site-packages\werkzeug\_internal.py:97]
+2025-05-05 17:52:06,311 INFO: 127.0.0.1 - - [05/May/2025 17:52:06] "[33mGET /static/favicon.ico HTTP/1.1[0m" 404 - [in C:\Users\Petrov\PycharmProjects\aitrvellingwebapp\aitrvellingwebapp\venv\lib\site-packages\werkzeug\_internal.py:97]
+2025-05-05 17:52:06,589 INFO: 127.0.0.1 - - [05/May/2025 17:52:06] "GET /auth/login HTTP/1.1" 200 - [in C:\Users\Petrov\PycharmProjects\aitrvellingwebapp\aitrvellingwebapp\venv\lib\site-packages\werkzeug\_internal.py:97]
+2025-05-05 17:52:06,619 INFO: 127.0.0.1 - - [05/May/2025 17:52:06] "[33mGET /favicon.ico HTTP/1.1[0m" 404 - [in C:\Users\Petrov\PycharmProjects\aitrvellingwebapp\aitrvellingwebapp\venv\lib\site-packages\werkzeug\_internal.py:97]
+2025-05-05 17:52:07,620 ERROR: Ошибка базы данных при входе: no such table: users [in c:\Users\Petrov\PycharmProjects\aitrvellingwebapp\aitrvellingwebapp\app.py:347]
+2025-05-05 17:52:07,622 INFO: 127.0.0.1 - - [05/May/2025 17:52:07] "POST /auth/login HTTP/1.1" 200 - [in C:\Users\Petrov\PycharmProjects\aitrvellingwebapp\aitrvellingwebapp\venv\lib\site-packages\werkzeug\_internal.py:97]
+2025-05-05 17:52:08,771 ERROR: Ошибка базы данных при входе: no such table: users [in c:\Users\Petrov\PycharmProjects\aitrvellingwebapp\aitrvellingwebapp\app.py:347]
+2025-05-05 17:52:08,772 INFO: 127.0.0.1 - - [05/May/2025 17:52:08] "POST /auth/login HTTP/1.1" 200 - [in C:\Users\Petrov\PycharmProjects\aitrvellingwebapp\aitrvellingwebapp\venv\lib\site-packages\werkzeug\_internal.py:97]
+2025-05-05 17:52:08,907 ERROR: Ошибка базы данных при входе: no such table: users [in c:\Users\Petrov\PycharmProjects\aitrvellingwebapp\aitrvellingwebapp\app.py:347]
+2025-05-05 17:52:08,907 INFO: 127.0.0.1 - - [05/May/2025 17:52:08] "POST /auth/login HTTP/1.1" 200 - [in C:\Users\Petrov\PycharmProjects\aitrvellingwebapp\aitrvellingwebapp\venv\lib\site-packages\werkzeug\_internal.py:97]
+2025-05-05 17:52:09,645 INFO: 127.0.0.1 - - [05/May/2025 17:52:09] "GET /auth/register HTTP/1.1" 200 - [in C:\Users\Petrov\PycharmProjects\aitrvellingwebapp\aitrvellingwebapp\venv\lib\site-packages\werkzeug\_internal.py:97]
+2025-05-05 17:52:11,606 ERROR: Exception on /auth/register [POST] [in C:\Users\Petrov\PycharmProjects\aitrvellingwebapp\aitrvellingwebapp\venv\lib\site-packages\flask\app.py:875]
+Traceback (most recent call last):
+  File "C:\Users\Petrov\PycharmProjects\aitrvellingwebapp\aitrvellingwebapp\venv\lib\site-packages\flask\app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+  File "C:\Users\Petrov\PycharmProjects\aitrvellingwebapp\aitrvellingwebapp\venv\lib\site-packages\flask\app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "C:\Users\Petrov\PycharmProjects\aitrvellingwebapp\aitrvellingwebapp\venv\lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "C:\Users\Petrov\PycharmProjects\aitrvellingwebapp\aitrvellingwebapp\venv\lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+  File "c:\Users\Petrov\PycharmProjects\aitrvellingwebapp\aitrvellingwebapp\app.py", line 298, in register_route
+    existing_user = db.execute(
+sqlite3.OperationalError: no such table: users
+2025-05-05 17:52:11,608 INFO: 127.0.0.1 - - [05/May/2025 17:52:11] "[35m[1mPOST /auth/register HTTP/1.1[0m" 500 - [in C:\Users\Petrov\PycharmProjects\aitrvellingwebapp\aitrvellingwebapp\venv\lib\site-packages\werkzeug\_internal.py:97]
+2025-05-05 17:53:49,290 ERROR: Exception on /auth/register [POST] [in C:\Users\Petrov\PycharmProjects\aitrvellingwebapp\aitrvellingwebapp\venv\lib\site-packages\flask\app.py:875]
+Traceback (most recent call last):
+  File "C:\Users\Petrov\PycharmProjects\aitrvellingwebapp\aitrvellingwebapp\venv\lib\site-packages\flask\app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+  File "C:\Users\Petrov\PycharmProjects\aitrvellingwebapp\aitrvellingwebapp\venv\lib\site-packages\flask\app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "C:\Users\Petrov\PycharmProjects\aitrvellingwebapp\aitrvellingwebapp\venv\lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "C:\Users\Petrov\PycharmProjects\aitrvellingwebapp\aitrvellingwebapp\venv\lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+  File "c:\Users\Petrov\PycharmProjects\aitrvellingwebapp\aitrvellingwebapp\app.py", line 298, in register_route
+    existing_user = db.execute(
+sqlite3.OperationalError: no such table: users
+2025-05-05 17:53:49,290 INFO: 127.0.0.1 - - [05/May/2025 17:53:49] "[35m[1mPOST /auth/register HTTP/1.1[0m" 500 - [in C:\Users\Petrov\PycharmProjects\aitrvellingwebapp\aitrvellingwebapp\venv\lib\site-packages\werkzeug\_internal.py:97]
+2025-05-05 18:03:30,526 ERROR: Exception on /auth/register [POST] [in C:\Users\Petrov\PycharmProjects\aitrvellingwebapp\aitrvellingwebapp\venv\lib\site-packages\flask\app.py:875]
+Traceback (most recent call last):
+  File "C:\Users\Petrov\PycharmProjects\aitrvellingwebapp\aitrvellingwebapp\venv\lib\site-packages\flask\app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+  File "C:\Users\Petrov\PycharmProjects\aitrvellingwebapp\aitrvellingwebapp\venv\lib\site-packages\flask\app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "C:\Users\Petrov\PycharmProjects\aitrvellingwebapp\aitrvellingwebapp\venv\lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "C:\Users\Petrov\PycharmProjects\aitrvellingwebapp\aitrvellingwebapp\venv\lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+  File "c:\Users\Petrov\PycharmProjects\aitrvellingwebapp\aitrvellingwebapp\app.py", line 298, in register_route
+    existing_user = db.execute(
+sqlite3.OperationalError: no such table: users
+2025-05-05 18:03:30,527 INFO: 127.0.0.1 - - [05/May/2025 18:03:30] "[35m[1mPOST /auth/register HTTP/1.1[0m" 500 - [in C:\Users\Petrov\PycharmProjects\aitrvellingwebapp\aitrvellingwebapp\venv\lib\site-packages\werkzeug\_internal.py:97]
+2025-05-05 18:03:33,887 INFO: 127.0.0.1 - - [05/May/2025 18:03:33] "GET / HTTP/1.1" 200 - [in C:\Users\Petrov\PycharmProjects\aitrvellingwebapp\aitrvellingwebapp\venv\lib\site-packages\werkzeug\_internal.py:97]
+2025-05-05 18:03:33,899 INFO: 127.0.0.1 - - [05/May/2025 18:03:33] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 - [in C:\Users\Petrov\PycharmProjects\aitrvellingwebapp\aitrvellingwebapp\venv\lib\site-packages\werkzeug\_internal.py:97]
+2025-05-05 18:03:33,899 INFO: 127.0.0.1 - - [05/May/2025 18:03:33] "[36mGET /static/js/script.js HTTP/1.1[0m" 304 - [in C:\Users\Petrov\PycharmProjects\aitrvellingwebapp\aitrvellingwebapp\venv\lib\site-packages\werkzeug\_internal.py:97]
+2025-05-05 18:03:41,321 INFO: 127.0.0.1 - - [05/May/2025 18:03:41] "GET /auth/login HTTP/1.1" 200 - [in C:\Users\Petrov\PycharmProjects\aitrvellingwebapp\aitrvellingwebapp\venv\lib\site-packages\werkzeug\_internal.py:97]
+2025-05-05 18:03:42,482 ERROR: Ошибка базы данных при входе: no such table: users [in c:\Users\Petrov\PycharmProjects\aitrvellingwebapp\aitrvellingwebapp\app.py:347]
+2025-05-05 18:03:42,482 INFO: 127.0.0.1 - - [05/May/2025 18:03:42] "POST /auth/login HTTP/1.1" 200 - [in C:\Users\Petrov\PycharmProjects\aitrvellingwebapp\aitrvellingwebapp\venv\lib\site-packages\werkzeug\_internal.py:97]

@@ -1,78 +1,307 @@
-{% extends 'layout.html' %} {# Расширяем обновленный layout.html #}
-
-{% block title %}Главная Карта - Интерактивная Карта{% endblock %} {# Уточненный заголовок #}
-
-{% block body_class %}index-page{% endblock %} {# Добавляем класс к body для специфичных стилей #}
-
-{% block head_extra %}
-    {# Специфичные стили для карты (если нужны, здесь не требуются т.к. в style.css) #}
-{% endblock %}
-
-
-{% block content %}
-    {# Этот блок содержит только уникальный контент для index.html #}
-
-    <!-- Панель управления -->
-    <div class="controls">
-        <button id="locate-me-btn" title="Найти мое местоположение">
-            <i class="fas fa-location-arrow"></i> Найти меня
-        </button>
-        <button id="show-recs-btn" title="Получить рекомендации для путешествий">
-            <i class="fas fa-lightbulb"></i> Рекомендации
-        </button>
-
-        {% if g.user %}
-            <span class="user-greeting">Привет, {{ g.user['username'] | default('Пользователь') }}!</span>
-            <button id="profile-btn" onclick="location.href='{{ url_for('auth.profile_route') }}'" title="Профиль">
-                <i class="fas fa-user"></i> Профиль
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Travelling App</title>
+    <!-- Подключение Bootstrap для стилей (временно, потом вынесем в CSS) -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Подключение Leaflet для карты -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Подключение Mermaid для схем -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        /* Минимальные встроенные стили (временно, потом вынесем в CSS) */
+        #map {
+            height: 500px;
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .error-message {
+            color: red;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <!-- Навигационная панель -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="{{ url_for('index') }}">AI Travelling App</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
             </button>
-            <button id="logout-btn" onclick="location.href='{{ url_for('auth.logout_route') }}'" title="Выйти">
-                <i class="fas fa-sign-out-alt"></i> Выйти
-            </button>
-        {% else %}
-            <button id="login-btn" onclick="location.href='{{ url_for('auth.login_route') }}'" title="Войти">
-                <i class="fas fa-sign-in-alt"></i> Войти
-            </button>
-            <button id="register-btn" onclick="location.href='{{ url_for('auth.register_route') }}'" title="Зарегистрироваться">
-                <i class="fas fa-user-plus"></i> Регистрация
-            </button>
-        {% endif %}
-    </div>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    {% if user %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('auth.profile_route') }}">Профиль ({{ user.username }})</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('auth.logout_route') }}">Выйти</a>
+                        </li>
+                    {% else %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('auth.login_route') }}">Войти</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('auth.register_route') }}">Регистрация</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
 
-    <!-- Контейнер карты и инфо-панели -->
-    <div id="map-container">
+    <!-- Основной контейнер -->
+    <div class="container">
+        <h1 class="text-center mb-4">Исследуйте мир с AI</h1>
+
+        <!-- Карта -->
         <div id="map"></div>
 
-        <div id="info-panel">
-            <button id="close-info-panel" title="Закрыть панель">×</button>
-            <h2 id="info-title"></h2>
-            <p id="info-description"></p>
-
-            <h3>Детали:</h3>
-            <ul id="info-details"></ul>
-
-            <div id="scheme-container">
-                <h3>Схема:</h3>
-                <div class="mermaid" id="mermaid-chart"></div>
+        <!-- Кнопка для получения рекомендаций (только для авторизованных пользователей) -->
+        {% if user %}
+            <div class="text-center mb-4">
+                <button id="get-recommendations-btn" class="btn btn-primary">Получить рекомендации</button>
             </div>
+        {% endif %}
 
-            <div class="confidence" id="info-confidence"></div>
-
-            <div class="sources">
-                <h3>Источники:</h3>
-                <ul id="info-sources"></ul>
-            </div>
-
-            <div id="recommendations-area"></div>
-
-            <button id="show-scheme-btn">Показать/Скрыть Схему</button>
+        <!-- Блок для отображения информации о месте -->
+        <div id="place-info" class="info-box" style="display: none;">
+            <h2>Информация о месте</h2>
+            <h3 id="place-title"></h3>
+            <p id="place-description"></p>
+            <ul id="place-details"></ul>
+            <p><strong>Уверенность AI:</strong> <span id="place-confidence"></span></p>
+            <p><strong>Источники:</strong></p>
+            <ul id="place-sources"></ul>
+            <button id="generate-scheme-btn" class="btn btn-secondary">Сгенерировать схему</button>
         </div>
+
+        <!-- Блок для отображения рекомендаций -->
+        <div id="recommendations" class="recommendations-box" style="display: none;">
+            <h2>Рекомендации</h2>
+            <div id="recommendations-list"></div>
+        </div>
+
+        <!-- Блок для отображения схемы -->
+        <div id="scheme" class="scheme-box" style="display: none;">
+            <h2>Схема</h2>
+            <div id="mermaid-scheme"></div>
+        </div>
+
+        <!-- Блок для отображения ошибок -->
+        <div id="error-message" class="error-message" style="display: none;"></div>
     </div>
 
-{% endblock %}
+    <!-- Подключение JavaScript библиотек -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // Инициализация Mermaid
+        mermaid.initialize({ startOnLoad: true });
 
+        // Инициализация карты
+        const map = L.map('map').setView([51.505, -0.09], 13); // Начальные координаты (Лондон)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
 
-{% block scripts %}
-    {# Подключаем основной скрипт карты ТОЛЬКО на этой странице #}
-    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
-{% endblock %}
+        let marker = null; // Переменная для хранения маркера
+        let placeData = null; // Переменная для хранения данных о месте
+
+        // Функция для отображения информации о месте
+        function displayPlaceInfo(data) {
+            const placeInfo = document.getElementById('place-info');
+            const errorMessage = document.getElementById('error-message');
+            placeInfo.style.display = 'none';
+            errorMessage.style.display = 'none';
+
+            if (data.error) {
+                errorMessage.textContent = `Ошибка: ${data.error} (${data.details || ''})`;
+                errorMessage.style.display = 'block';
+                return;
+            }
+
+            document.getElementById('place-title').textContent = data.title || 'Неизвестное место';
+            document.getElementById('place-description').textContent = data.description || 'Описание отсутствует';
+            document.getElementById('place-confidence').textContent = data.ai_confidence || 'Неизвестно';
+
+            const detailsList = document.getElementById('place-details');
+            detailsList.innerHTML = '';
+            if (data.details && Array.isArray(data.details)) {
+                data.details.forEach(detail => {
+                    const li = document.createElement('li');
+                    li.textContent = detail;
+                    detailsList.appendChild(li);
+                });
+            }
+
+            const sourcesList = document.getElementById('place-sources');
+            sourcesList.innerHTML = '';
+            if (data.sources && Array.isArray(data.sources)) {
+                data.sources.forEach(source => {
+                    const li = document.createElement('li');
+                    const a = document.createElement('a');
+                    a.href = source;
+                    a.textContent = source;
+                    a.target = '_blank';
+                    li.appendChild(a);
+                    sourcesList.appendChild(li);
+                });
+            }
+
+            placeData = data; // Сохраняем данные для генерации схемы
+            placeInfo.style.display = 'block';
+        }
+
+        // Функция для отображения рекомендаций
+        function displayRecommendations(recommendations) {
+            const recommendationsBox = document.getElementById('recommendations');
+            const recommendationsList = document.getElementById('recommendations-list');
+            const errorMessage = document.getElementById('error-message');
+            recommendationsBox.style.display = 'none';
+            errorMessage.style.display = 'none';
+
+            if (recommendations.error) {
+                errorMessage.textContent = `Ошибка: ${recommendations.error} (${recommendations.details || ''})`;
+                errorMessage.style.display = 'block';
+                return;
+            }
+
+            recommendationsList.innerHTML = '';
+            if (Array.isArray(recommendations)) {
+                recommendations.forEach(rec => {
+                    const div = document.createElement('div');
+                    div.className = 'recommendation mb-3 p-3 border rounded';
+                    div.innerHTML = `
+                        <h4>${rec.name}</h4>
+                        <p><strong>Координаты:</strong> ${rec.lat}, ${rec.lng}</p>
+                        <p><strong>Причина:</strong> ${rec.reason}</p>
+                        <p><strong>Теги:</strong> ${rec.tags.join(', ')}</p>
+                        <button class="btn btn-info view-on-map" data-lat="${rec.lat}" data-lng="${rec.lng}">Показать на карте</button>
+                    `;
+                    recommendationsList.appendChild(div);
+                });
+
+                // Добавляем обработчики для кнопок "Показать на карте"
+                document.querySelectorAll('.view-on-map').forEach(button => {
+                    button.addEventListener('click', function() {
+                        const lat = parseFloat(this.getAttribute('data-lat'));
+                        const lng = parseFloat(this.getAttribute('data-lng'));
+                        map.setView([lat, lng], 13);
+                        if (marker) {
+                            marker.setLatLng([lat, lng]);
+                        } else {
+                            marker = L.marker([lat, lng]).addTo(map);
+                        }
+                        fetchPlaceInfo(lat, lng);
+                    });
+                });
+
+                recommendationsBox.style.display = 'block';
+            }
+        }
+
+        // Функция для отображения схемы
+        function displayScheme(schemeData) {
+            const schemeBox = document.getElementById('scheme');
+            const mermaidScheme = document.getElementById('mermaid-scheme');
+            const errorMessage = document.getElementById('error-message');
+            schemeBox.style.display = 'none';
+            errorMessage.style.display = 'none';
+
+            if (schemeData.error) {
+                errorMessage.textContent = `Ошибка: ${schemeData.error} (${schemeData.details || ''})`;
+                errorMessage.style.display = 'block';
+                return;
+            }
+
+            if (schemeData.type === 'mermaid_mindmap') {
+                mermaidScheme.innerHTML = schemeData.data;
+                mermaid.init(undefined, mermaidScheme);
+                schemeBox.style.display = 'block';
+            }
+        }
+
+        // Функция для получения информации о месте
+        function fetchPlaceInfo(lat, lng) {
+            fetch('/get-place-info', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ lat, lng })
+            })
+            .then(response => response.json())
+            .then(data => displayPlaceInfo(data))
+            .catch(error => {
+                document.getElementById('error-message').textContent = `Ошибка запроса: ${error}`;
+                document.getElementById('error-message').style.display = 'block';
+            });
+        }
+
+        // Функция для получения рекомендаций
+        function fetchRecommendations() {
+            fetch('/get-recommendations', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => displayRecommendations(data))
+            .catch(error => {
+                document.getElementById('error-message').textContent = `Ошибка запроса: ${error}`;
+                document.getElementById('error-message').style.display = 'block';
+            });
+        }
+
+        // Функция для генерации схемы
+        function generateScheme() {
+            if (!placeData) {
+                document.getElementById('error-message').textContent = 'Сначала выберите место на карте.';
+                document.getElementById('error-message').style.display = 'block';
+                return;
+            }
+
+            fetch('/generate-scheme', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ place_data: placeData })
+            })
+            .then(response => response.json())
+            .then(data => displayScheme(data))
+            .catch(error => {
+                document.getElementById('error-message').textContent = `Ошибка запроса: ${error}`;
+                document.getElementById('error-message').style.display = 'block';
+            });
+        }
+
+        // Обработчик клика по карте
+        map.on('click', function(e) {
+            const lat = e.latlng.lat;
+            const lng = e.latlng.lng;
+            if (marker) {
+                marker.setLatLng([lat, lng]);
+            } else {
+                marker = L.marker([lat, lng]).addTo(map);
+            }
+            fetchPlaceInfo(lat, lng);
+        });
+
+        // Обработчик кнопки "Получить рекомендации"
+        const recommendationsBtn = document.getElementById('get-recommendations-btn');
+        if (recommendationsBtn) {
+            recommendationsBtn.addEventListener('click', fetchRecommendations);
+        }
+
+        // Обработчик кнопки "Сгенерировать схему"
+        document.getElementById('generate-scheme-btn').addEventListener('click', generateScheme);
+    </script>
+</body>
+</html>

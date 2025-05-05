@@ -1,46 +1,32 @@
+import os
+import json
+import logging
 import datetime
 import functools
-import json
-import os
 import sqlite3
-import sys
-import time
 import google.generativeai as genai
-import requests
 import wikipediaapi
+from dotenv import load_dotenv
+from duckduckgo_search import DDGS  # Добавляем для поиска через DuckDuckGo
 from geopy.exc import GeocoderServiceError, GeocoderTimedOut
 from geopy.geocoders import Nominatim
 from werkzeug.security import check_password_hash, generate_password_hash
-from flask import Flask
-from flask import Blueprint
-from flask import flash
-from flask import g
-from flask import jsonify
-from flask import redirect
-from flask import render_template
-from flask import request
-from flask import session
-from flask import url_for
-from flask import current_app
-from database import init_app
-from database import get_db
-from database import close_db
-from database import init_db
-from database import get_cached_place_info
-from database import cache_place_info
-from database import get_user_by_id
-from database import get_user_by_username
-from database import add_user
-from database import get_all_interests
-from database import get_user_interest_ids
-from database import update_user_interests
-from database import get_visited_places
-from database import add_visited_place
-from database import get_user_interests
+from flask import (
+    Flask, Blueprint, flash, g, jsonify, redirect, render_template, request,
+    session, url_for, current_app
+)
+from database import (
+    init_app, get_db, close_db, init_db, get_cached_place_info, cache_place_info,
+    get_user_by_id, get_user_by_username, add_user, get_all_interests,
+    get_user_interest_ids, update_user_interests, get_visited_places,
+    add_visited_place, get_user_interests
+)
+
+# Загрузка переменных окружения из .env
+load_dotenv()
 
 
 # --- Константы для форматов JSON ---
-# (Код констант остается без изменений)
 PLACE_INFO_EXPECTED_JSON_FORMAT = """
 {
   "title": "string (Краткий, точный заголовок)",
@@ -64,8 +50,8 @@ RECOMMENDATIONS_EXPECTED_JSON_FORMAT = """
 ] (Верни 3-5 рекомендаций в виде JSON массива)
 """
 
-# --- Вспомогательные функции (С МИНИМАЛЬНОЙ ОБРАБОТКОЙ ОШИБОК) ---
-# (Код вспомогательных функций get_location_details, get_wikipedia_info, call_ai_model остается без изменений)
+
+# --- Вспомогательные функции ---
 def get_location_details(latitude, longitude):
     """Получает адрес и имя по координатам. Вызывает исключения при ошибках."""
     print(f"Геокодирование координат: {latitude}, {longitude}")
@@ -89,11 +75,21 @@ def get_location_details(latitude, longitude):
         ]
         place_name = next((item for item in components if item), None)
         if not place_name:
-             place_name = address_info.get('city', address_info.get('town', address_info.get('village', address_info.get('country', 'Unknown Location'))))
+            place_name = address_info.get(
+                'city', address_info.get(
+                    'town', address_info.get(
+                        'village', address_info.get('country', 'Unknown Location')
+                    )
+                )
+            )
         else:
-             area = address_info.get('city', address_info.get('town', address_info.get('village', address_info.get('country'))))
-             if area and area != place_name:
-                 place_name = f"{place_name}, {area}"
+            area = address_info.get(
+                'city', address_info.get(
+                    'town', address_info.get('village', address_info.get('country'))
+                )
+            )
+            if area and area != place_name:
+                place_name = f"{place_name}, {area}"
 
         print(f"Geocoded Name: {place_name}")
         return place_name, address_info
@@ -102,13 +98,14 @@ def get_location_details(latitude, longitude):
         default_place_name = f"Location at {latitude:.5f}, {longitude:.5f}"
         return default_place_name, {}
 
+
 def get_wikipedia_info(place_name, latitude, longitude):
     """Получает сводку из Википедии. Вызывает исключения при ошибках."""
     print(f"Поиск в Википедии для: '{place_name}' или координат {latitude}, {longitude}")
     wiki_wiki = wikipediaapi.Wikipedia(
         current_app.config['WIKI_USER_AGENT'], 'en'
     )
-    page = wiki_wiki.page(place_name.split(',')[0]) # Используем первую часть имени
+    page = wiki_wiki.page(place_name.split(',')[0])  # Используем первую часть имени
 
     if page.exists():
         print(f"Найдена страница Википедии по имени: {page.title}")
@@ -130,20 +127,34 @@ def get_wikipedia_info(place_name, latitude, longitude):
     return "Соответствующая статья в Википедии не найдена.", None
 
 
+def search_web(query):
+    """Поиск в интернете через DuckDuckGo."""
+    try:
+        with DDGS() as ddgs:
+            results = list(ddgs.text(query, max_results=5))
+        return [
+            {'title': result['title'], 'link': result['href'], 'snippet': result['body']}
+            for result in results
+        ]
+    except Exception as e:
+        logging.error(f"Ошибка поиска через DuckDuckGo: {e}")
+        return []
+
+
 def call_ai_model(prompt, expected_json_format_description):
     """Вызывает Google Gemini AI. Вызывает исключения при ошибках."""
-    print("\n--- Вызов Google Gemini AI (Minimal Error Handling) ---")
+    print("\n--- Вызов Google Gemini AI ---")
     model_to_use = current_app.ai_model
     generation_config = current_app.generation_config
 
     if not model_to_use:
-         raise RuntimeError("Модель Google Gemini не инициализирована.")
+        raise RuntimeError("Модель Google Gemini не инициализирована.")
 
     print(f"Отправка запроса к модели: {model_to_use.model_name}")
 
     response = model_to_use.generate_content(
-         prompt,
-         generation_config=generation_config,
+        prompt,
+        generation_config=generation_config,
     )
 
     raw_response_content = ""
@@ -152,108 +163,103 @@ def call_ai_model(prompt, expected_json_format_description):
     elif hasattr(response, 'parts') and response.parts:
         raw_response_content = "".join(part.text for part in response.parts if hasattr(part, 'text'))
     else:
-         print(f"ПРЕДУПРЕЖДЕНИЕ: Неожиданная структура ответа от Gemini: {response}", file=sys.stderr)
-         # Позволяем потенциально упасть при парсинге JSON
+        logging.error(f"Неожиданная структура ответа от Gemini: {response}")
+        raise ValueError("Неожиданная структура ответа от Gemini")
 
     print(f"Сырой ответ от Gemini (ожидается JSON): {raw_response_content[:500]}...")
 
-    # Позволяем json.JSONDecodeError распространиться при неудаче
-    ai_result_json = json.loads(raw_response_content)
-    print("--- Ответ Gemini успешно распарсен как JSON ---")
-
-    if not isinstance(ai_result_json, (dict, list)):
-         print(f"ПРЕДУПРЕЖДЕНИЕ: AI вернул JSON, но это не dict или list: {type(ai_result_json)}", file=sys.stderr)
-         # Можно рассмотреть возможность вызова исключения здесь, если формат критичен
-         # raise ValueError("AI response is JSON but not the expected object or list structure.")
-
-    return ai_result_json
+    try:
+        ai_result_json = json.loads(raw_response_content)
+        print("--- Ответ Gemini успешно распарсен как JSON ---")
+        return ai_result_json
+    except json.JSONDecodeError as e:
+        logging.error(f"Ошибка парсинга JSON от Gemini: {e}")
+        raise
 
 
-# --- Фабрика Приложения Flask ---
+def login_required(view):
+    """Декоратор для требования аутентификации."""
+    @functools.wraps(view)
+    def wrapped_view(**kwargs):
+        if g.user is None:
+            flash('Для доступа к этой странице необходимо войти.', 'warning')
+            return redirect(url_for('auth.login_route'))
+        return view(**kwargs)
+    return wrapped_view
 
+
+def sanitize_mermaid_text(text):
+    """Экранирует текст для Mermaid."""
+    if not isinstance(text, str):
+        text = str(text)
+    return (
+        text.replace(')', r'\)').replace('(', r'\(')
+        .replace('"', '&quot;').replace('#', '')
+        .replace('{', r'\{').replace('}', r'\}')
+        .replace('[', r'\[').replace(']', r'\]')
+        .strip()
+    )
+
+
+# --- Фабрика приложения Flask ---
 def create_app(test_config=None):
     """Создает и конфигурирует экземпляр приложения Flask."""
     app = Flask(__name__, instance_relative_config=True)
 
     # --- Конфигурация по умолчанию ---
     app.config.from_mapping(
-        SECRET_KEY=os.environ.get('SECRET_KEY', 'dev_secret_key_change_me_in_prod'), # ОБЯЗАТЕЛЬНО ИЗМЕНИТЬ
+        SECRET_KEY=os.environ.get('SECRET_KEY', 'dev_secret_key_change_me_in_prod'),
         DATABASE=os.path.join(app.instance_path, 'main.db'),
-        GOOGLE_API_KEY=os.environ.get("GOOGLE_API_KEY"), # Загрузка из env
-        GOOGLE_GEMINI_MODEL=os.environ.get("GOOGLE_GEMINI_MODEL", "gemini-1.5-flash"), # Загрузка из env
-        WIKI_USER_AGENT='InteractiveMapApp/1.3 (MyMapApp; contact@example.com)', # Укажите ваш User-Agent
-        GEOPY_USER_AGENT='InteractiveMapApp/1.3 (MyMapApp; contact@example.com)', # Укажите ваш User-Agent
-        GEOPY_TIMEOUT=10, # seconds
+        GOOGLE_API_KEY=os.environ.get("GOOGLE_API_KEY"),
+        GOOGLE_GEMINI_MODEL=os.environ.get("GOOGLE_GEMINI_MODEL", "gemini-1.5-flash"),
+        WIKI_USER_AGENT='InteractiveMapApp/1.3 (MyMapApp; contact@example.com)',
+        GEOPY_USER_AGENT='InteractiveMapApp/1.3 (MyMapApp; contact@example.com)',
+        GEOPY_TIMEOUT=10,
     )
 
-    # Загрузка из instance/config.py (переопределяет дефолты и env, если там задано)
+    # Загрузка из instance/config.py
     app.config.from_pyfile('config.py', silent=True)
 
-    # Применение тестовой конфигурации, если передана
+    # Применение тестовой конфигурации
     if test_config:
         app.config.update(test_config)
 
+    # --- Настройка логирования ---
+    logging.basicConfig(
+        filename='app.log',
+        level=logging.INFO,
+        format='%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
+    )
+
     # --- Критические проверки конфигурации ---
-    google_key = app.config.get('GOOGLE_API_KEY')
-    if not google_key:
-        print("!!! КРИТИЧЕСКАЯ ОШИБКА: GOOGLE_API_KEY не установлен.", file=sys.stderr)
-        sys.exit(1) # Выход, если ключ отсутствует
+    if not app.config.get('GOOGLE_API_KEY'):
+        logging.error("GOOGLE_API_KEY не установлен.")
+        raise RuntimeError("GOOGLE_API_KEY не установлен.")
 
     # Убедимся, что папка instance существует
-    try:
-        os.makedirs(app.instance_path, exist_ok=True)
-    except OSError as e:
-         print(f"КРИТИЧЕСКАЯ ОШИБКА: Не удалось создать папку instance: {e}", file=sys.stderr)
-         sys.exit(1)
-
+    os.makedirs(app.instance_path, exist_ok=True)
 
     # --- Инициализация клиента Google Gemini ---
     try:
-        if genai:
-            genai.configure(api_key=google_key)
-            model_name = app.config['GOOGLE_GEMINI_MODEL']
-            app.ai_model = genai.GenerativeModel(model_name)
-            app.generation_config = genai.GenerationConfig(
-                response_mime_type="application/json"
-            )
-            print(f"Клиент Google Gemini сконфигурирован для модели: {model_name}")
-        else:
-            # genai должен быть импортирован, иначе ошибка будет раньше
-            raise RuntimeError("SDK Google Generative AI недоступен.")
+        genai.configure(api_key=app.config['GOOGLE_API_KEY'])
+        app.ai_model = genai.GenerativeModel(app.config['GOOGLE_GEMINI_MODEL'])
+        app.generation_config = genai.GenerationConfig(response_mime_type="application/json")
+        logging.info(f"Клиент Google Gemini сконфигурирован для модели: {app.config['GOOGLE_GEMINI_MODEL']}")
     except Exception as e:
-         print(f"КРИТИЧЕСКАЯ ОШИБКА при конфигурации Google Gemini: {e}", file=sys.stderr)
-         sys.exit(1)
+        logging.error(f"Ошибка при конфигурации Google Gemini: {e}")
+        raise
 
-    # --- Инициализация Базы Данных ---
-    init_app(app) # Регистрация close_db и команды init-db
+    # --- Инициализация базы данных ---
+    init_app(app)
 
-    # Создание таблиц БД, если файл БД не существует
     with app.app_context():
         db_path = current_app.config['DATABASE']
         if not os.path.exists(db_path):
-            print(f"Файл базы данных не найден в {db_path}. Инициализация схемы...")
-            try:
-                 init_db() # Выполняет schema.sql
-                 print("Схема базы данных инициализирована.")
-            except Exception as e:
-                 print(f"КРИТИЧЕСКАЯ ОШИБКА: Не удалось инициализировать схему БД: {e}", file=sys.stderr)
-                 sys.exit(1) # Выход, если БД не создалась
-        else:
-             print(f"Файл базы данных найден: {db_path}.")
+            logging.info(f"Файл базы данных не найден в {db_path}. Инициализация схемы...")
+            init_db()
 
-
-    # --- Blueprint для Аутентификации ---
+    # --- Blueprint для аутентификации ---
     auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
-
-    def login_required(view):
-        """Декоратор для требования аутентификации."""
-        @functools.wraps(view)
-        def wrapped_view(**kwargs):
-            if g.user is None:
-                flash('Для доступа к этой странице необходимо войти.', 'warning')
-                return redirect(url_for('auth.login_route'))
-            return view(**kwargs)
-        return wrapped_view
 
     @app.before_request
     def load_logged_in_user():
@@ -268,14 +274,13 @@ def create_app(test_config=None):
                     'SELECT id, username FROM users WHERE id = ?', (user_id,)
                 ).fetchone()
                 if g.user is None:
-                    session.clear() # Очищаем сессию, если ID невалиден
-                    print(f"Предупреждение: ID пользователя {user_id} из сессии не найден в БД.")
+                    session.clear()
+                    logging.warning(f"ID пользователя {user_id} из сессии не найден в БД.")
             except Exception as e:
-                 print(f"Ошибка при загрузке пользователя {user_id} из БД: {e}", file=sys.stderr)
-                 g.user = None # Считаем неаутентифицированным при ошибке
+                logging.error(f"Ошибка при загрузке пользователя {user_id} из БД: {e}")
+                g.user = None
 
-    # --- Маршруты Аутентификации ---
-    # (Код маршрутов register_route, login_route, logout_route, profile_route остается без изменений)
+    # --- Маршруты аутентификации ---
     @auth_bp.route('/register', methods=('GET', 'POST'))
     def register_route():
         """Обрабатывает регистрацию пользователя."""
@@ -303,15 +308,15 @@ def create_app(test_config=None):
                         (username, generate_password_hash(password)),
                     )
                     db.commit()
-                    print(f"Пользователь '{username}' успешно зарегистрирован.")
+                    logging.info(f"Пользователь '{username}' успешно зарегистрирован.")
                     flash('Регистрация прошла успешно! Пожалуйста, войдите.', 'success')
                     return redirect(url_for("auth.login_route"))
                 except sqlite3.Error as e:
-                     error = f"Ошибка базы данных при регистрации: {e}"
-                     print(error, file=sys.stderr)
+                    error = f"Ошибка базы данных при регистрации: {e}"
+                    logging.error(error)
 
             if error:
-                 flash(error, 'danger')
+                flash(error, 'danger')
 
         return render_template('register.html')
 
@@ -338,20 +343,19 @@ def create_app(test_config=None):
                     if user is None or not check_password_hash(user['password_hash'], password):
                         error = 'Неверное имя пользователя или пароль.'
                 except sqlite3.Error as e:
-                     error = f"Ошибка базы данных при входе: {e}"
-                     print(error, file=sys.stderr)
-
+                    error = f"Ошибка базы данных при входе: {e}"
+                    logging.error(error)
 
             if error is None and user:
                 session.clear()
                 session['user_id'] = user['id']
                 session['username'] = user['username']
-                g.user = user # Устанавливаем g.user сразу
-                print(f"Пользователь '{user['username']}' (ID: {user['id']}) вошел.")
+                g.user = user
+                logging.info(f"Пользователь '{user['username']}' (ID: {user['id']}) вошел.")
                 flash(f'Добро пожаловать, {user["username"]}!', 'success')
                 return redirect(url_for('index'))
             else:
-                 flash(error or 'Неизвестная ошибка входа.', 'danger')
+                flash(error or 'Неизвестная ошибка входа.', 'danger')
 
         return render_template('login.html', user=g.user)
 
@@ -362,7 +366,7 @@ def create_app(test_config=None):
         session.clear()
         g.user = None
         flash(f'{username}, вы успешно вышли.', 'info')
-        print(f"Пользователь '{username}' вышел.")
+        logging.info(f"Пользователь '{username}' вышел.")
         return redirect(url_for('index'))
 
     @auth_bp.route('/profile', methods=('GET', 'POST'))
@@ -375,44 +379,38 @@ def create_app(test_config=None):
         if request.method == 'POST':
             selected_interest_ids = request.form.getlist('interest_ids', type=int)
             try:
-                # Используем функцию из database.py
                 if update_user_interests(user_id, selected_interest_ids):
-                     print(f"Интересы пользователя ID {user_id} обновлены: {selected_interest_ids}")
-                     flash('Интересы успешно обновлены!', 'success')
+                    logging.info(f"Интересы пользователя ID {user_id} обновлены: {selected_interest_ids}")
+                    flash('Интересы успешно обновлены!', 'success')
                 else:
-                     # Функция update_user_interests вернула False (была ошибка)
-                     flash('Произошла ошибка при обновлении интересов.', 'danger')
+                    flash('Произошла ошибка при обновлении интересов.', 'danger')
                 return redirect(url_for('auth.profile_route'))
             except Exception as e:
-                 # Ловим неожиданные ошибки, если update_user_interests их не поймала
-                 print(f"Неожиданная ошибка при вызове update_user_interests: {e}", file=sys.stderr)
-                 flash('Произошла серьезная ошибка при обновлении интересов.', 'danger')
+                logging.error(f"Неожиданная ошибка при вызове update_user_interests: {e}")
+                flash('Произошла серьезная ошибка при обновлении интересов.', 'danger')
 
-        # GET запрос
         try:
-            all_interests = get_all_interests() # Используем функцию
-            user_interest_ids = get_user_interest_ids(user_id) # Используем функцию
+            all_interests = get_all_interests()
+            user_interest_ids = get_user_interest_ids(user_id)
         except Exception as e:
-             print(f"Ошибка при получении данных для профиля: {e}", file=sys.stderr)
-             flash(f"Не удалось загрузить данные профиля: {e}", 'danger')
-             all_interests = []
-             user_interest_ids = set()
+            logging.error(f"Ошибка при получении данных для профиля: {e}")
+            flash(f"Не удалось загрузить данные профиля: {e}", 'danger')
+            all_interests = []
+            user_interest_ids = set()
 
-        return render_template('profile.html',
-                               user=g.user,
-                               all_interests=all_interests,
-                               user_interest_ids=user_interest_ids)
+        return render_template(
+            'profile.html',
+            user=g.user,
+            all_interests=all_interests,
+            user_interest_ids=user_interest_ids
+        )
 
-    # Регистрация Blueprint с приложением
     app.register_blueprint(auth_bp)
 
-
-    # --- Основные Маршруты Приложения ---
-    # (Код маршрутов index, get_place_info_route, get_recommendations_route, generate_scheme_route остается без изменений)
+    # --- Основные маршруты приложения ---
     @app.route('/')
     def index():
         """Рендерит главную страницу карты."""
-        # g.user устанавливается в @app.before_request
         return render_template('index.html', user=g.user)
 
     @app.route('/get-place-info', methods=['POST'])
@@ -426,28 +424,32 @@ def create_app(test_config=None):
         user_id = g.user['id'] if g.user else None
         interests = get_user_interests(user_id) if user_id else []
 
-        print(f"Запрос инфо: Lat={lat}, Lng={lng}, UserID={user_id}, Interests={interests}")
+        logging.info(f"Запрос инфо: Lat={lat}, Lng={lng}, UserID={user_id}, Interests={interests}")
 
         cached_data = get_cached_place_info(lat, lng)
         if cached_data:
-            print("Возврат из кэша.")
+            logging.info("Возврат из кэша.")
             cached_data['requested_lat'] = lat
             cached_data['requested_lng'] = lng
             return jsonify(cached_data)
 
         try:
-            print("Получение деталей местоположения...")
+            logging.info("Получение деталей местоположения...")
             place_name, address_info = get_location_details(lat, lng)
 
-            print("Получение информации из Википедии...")
+            logging.info("Получение информации из Википедии...")
             wiki_summary, wiki_url = get_wikipedia_info(place_name, lat, lng)
 
-            print("Подготовка промпта и вызов AI...")
+            logging.info("Поиск в интернете...")
+            web_results = search_web(place_name)
+
+            logging.info("Подготовка промпта и вызов AI...")
             prompt = f"""
             Проанализируй местоположение: Lat={lat}, Lng={lng}.
             Вероятное название/район: {place_name}
             Детали адреса: {json.dumps(address_info) if address_info else 'Недоступно'}
             Сводка из Википедии: {wiki_summary}
+            Результаты поиска в интернете: {json.dumps(web_results)}
             Интересы пользователя: {', '.join(interests) if interests else 'Нет'}.
 
             Задача: Сгенерируй краткое, увлекательное описание, фокусируясь на аспектах, релевантных интересам пользователя. Если точные координаты неинтересны, опиши ближайшую релевантную точку интереса или общий характер местности, упоминая интересы пользователя.
@@ -462,52 +464,41 @@ def create_app(test_config=None):
                 ai_result['requested_lat'] = lat
                 ai_result['requested_lng'] = lng
                 ai_result['identified_place_name'] = place_name
-                ai_result['wikipedia_summary'] = wiki_summary # Добавляем для схемы
+                ai_result['wikipedia_summary'] = wiki_summary
+                ai_result['web_results'] = web_results
                 if wiki_url and 'sources' in ai_result and isinstance(ai_result['sources'], list) and wiki_url not in ai_result['sources']:
-                     ai_result['sources'].insert(0, wiki_url)
+                    ai_result['sources'].insert(0, wiki_url)
                 elif wiki_url and ('sources' not in ai_result or not isinstance(ai_result.get('sources'), list)):
-                     ai_result['sources'] = [wiki_url]
+                    ai_result['sources'] = [wiki_url]
 
-
-                print("Кэширование успешного результата AI.")
+                logging.info("Кэширование успешного результата AI.")
                 cache_place_info(lat, lng, ai_result)
-
-                # if user_id:
-                #     add_visited_place(user_id, ai_result.get('title', place_name), lat, lng)
 
                 return jsonify(ai_result)
             else:
-                # Этого не должно произойти, если call_ai_model либо возвращает dict/list, либо вызывает исключение
-                print("ОШИБКА: Результат AI не является словарем после успешного вызова.", file=sys.stderr)
-                raise ValueError("Неожиданный тип результата от AI") # Вызываем исключение
+                logging.error("Результат AI не является словарем после успешного вызова.")
+                raise ValueError("Неожиданный тип результата от AI")
 
         except Exception as e:
-            # Общий обработчик ошибок для основного потока получения информации
-            print(f"ОШИБКА при обработке /get-place-info: {type(e).__name__}: {e}", file=sys.stderr)
-            # Логирование полного трейсбека может быть полезно здесь
-            # import traceback
-            # traceback.print_exc()
-            # Возвращаем ошибку 500 (Internal Server Error), Flask ее обработает
-            # Можно вернуть и JSON с ошибкой, но 500 более стандартно для неожиданных сбоев
+            logging.error(f"Ошибка при обработке /get-place-info: {type(e).__name__}: {e}", exc_info=True)
             return jsonify({"error": "Внутренняя ошибка сервера", "details": str(e)}), 500
-
 
     @app.route('/get-recommendations', methods=['GET'])
     def get_recommendations_route():
         """Генерирует рекомендации с помощью AI."""
         user_id = g.user['id'] if g.user else None
         if not user_id:
-             return jsonify({"error": "Требуется вход для получения рекомендаций"}), 401 # Unauthorized
+            return jsonify({"error": "Требуется вход для получения рекомендаций"}), 401
 
         try:
             interests = get_user_interests(user_id)
             visited = get_visited_places(user_id)
 
-            print(f"Генерация рекоммендаций для UserID={user_id}, Interests={interests}, VisitedCount={len(visited)}")
+            logging.info(f"Генерация рекомендаций для UserID={user_id}, Interests={interests}, VisitedCount={len(visited)}")
 
             visited_summary = [
                 f"'{v.get('place_name', 'Unknown')}' ({v['lat']:.3f},{v['lng']:.3f})"
-                for v in visited[:10] # Ограничиваем историю для промпта
+                for v in visited[:10]
             ]
 
             rec_prompt = f"""
@@ -536,13 +527,12 @@ def create_app(test_config=None):
             if isinstance(recommendations_result, list):
                 return jsonify(recommendations_result)
             else:
-                print(f"ОШИБКА: Результат рекоммендаций AI не является списком: {type(recommendations_result)}", file=sys.stderr)
-                raise ValueError("Неожиданный тип результата рекоммендаций от AI")
+                logging.error(f"Результат рекомендаций AI не является списком: {type(recommendations_result)}")
+                raise ValueError("Неожиданный тип результата рекомендаций от AI")
 
         except Exception as e:
-            print(f"ОШИБКА при обработке /get-recommendations: {type(e).__name__}: {e}", file=sys.stderr)
-            return jsonify({"error": "Не удалось сгенерировать рекоммендации", "details": str(e)}), 500
-
+            logging.error(f"Ошибка при обработке /get-recommendations: {type(e).__name__}: {e}", exc_info=True)
+            return jsonify({"error": "Не удалось сгенерировать рекомендации", "details": str(e)}), 500
 
     @app.route('/generate-scheme', methods=['POST'])
     def generate_scheme_route():
@@ -553,7 +543,7 @@ def create_app(test_config=None):
         place_data = request.json['place_data']
 
         if not isinstance(place_data, dict) or place_data.get("error"):
-             return jsonify({"error": "Невозможно сгенерировать схему из неверных данных"}), 400
+            return jsonify({"error": "Невозможно сгенерировать схему из неверных данных"}), 400
 
         user_id = g.user['id'] if g.user else None
         interests = get_user_interests(user_id) if user_id else []
@@ -564,33 +554,31 @@ def create_app(test_config=None):
         sources = place_data.get('sources', [])
         confidence = place_data.get('ai_confidence', 'Неизвестно')
         wiki_summary = place_data.get('wikipedia_summary', '')
+        web_results = place_data.get('web_results', [])
 
-        print(f"Генерация схемы для: '{title}', Уверенность: {confidence}")
-
-        # --- Генерация строки Mermaid ---
-        def sanitize(text):
-            s = str(text).replace(')', r'\)').replace('(', r'\(')
-            s = s.replace('"', '"').replace('#', '') # Используем HTML entity для кавычек
-            s = s.replace('{', r'\{').replace('}', r'\}') # Экранируем фигурные скобки
-            s = s.replace('[', r'\[').replace(']', r'\]') # Экранируем квадратные скобки
-            return s.strip()
+        logging.info(f"Генерация схемы для: '{title}', Уверенность: {confidence}")
 
         mermaid_string = f"""mindmap
-  root(({sanitize(title)}))
-    (AI Confidence: {sanitize(confidence)})
+  root(({sanitize_mermaid_text(title)}))
+    (AI Confidence: {sanitize_mermaid_text(confidence)})
 """
         if description:
-             mermaid_string += f"    (Desc: {sanitize(description[:80])}...)\n"
+            mermaid_string += f"    (Desc: {sanitize_mermaid_text(description[:80])}...)\n"
 
         if details:
             mermaid_string += f"    ::icon(fa fa-list-ul) Key Details\n"
             for detail in details:
                 if isinstance(detail, str) and detail.strip():
-                     mermaid_string += f"      - {sanitize(detail[:100])}\n"
+                    mermaid_string += f"      - {sanitize_mermaid_text(detail[:100])}\n"
 
         if wiki_summary and wiki_summary != "Соответствующая статья в Википедии не найдена.":
-             mermaid_string += f"    ::icon(fa fa-wikipedia-w) Wikipedia Summary\n"
-             mermaid_string += f"      ... {sanitize(wiki_summary[:150])} ...\n"
+            mermaid_string += f"    ::icon(fa fa-wikipedia-w) Wikipedia Summary\n"
+            mermaid_string += f"      ... {sanitize_mermaid_text(wiki_summary[:150])} ...\n"
+
+        if web_results:
+            mermaid_string += f"    ::icon(fa fa-globe) Web Results\n"
+            for result in web_results[:3]:
+                mermaid_string += f"      > {sanitize_mermaid_text(result.get('title', 'No title')[:60])}...\n"
 
         related_interests = []
         combined_text_lower = (description + " " + " ".join(map(str, details)) + " " + wiki_summary).lower()
@@ -599,9 +587,9 @@ def create_app(test_config=None):
                 related_interests.append(interest)
 
         if related_interests:
-             mermaid_string += f"    ::icon(fa fa-star) Related User Interests\n"
-             for interest in related_interests:
-                 mermaid_string += f"      * {sanitize(interest.capitalize())}\n"
+            mermaid_string += f"    ::icon(fa fa-star) Related User Interests\n"
+            for interest in related_interests:
+                mermaid_string += f"      * {sanitize_mermaid_text(interest.capitalize())}\n"
 
         valid_sources = [s for s in sources if isinstance(s, str) and s.strip() and s != 'N/A']
         if valid_sources:
@@ -609,15 +597,14 @@ def create_app(test_config=None):
             for source in valid_sources:
                 if source.startswith(('http://', 'https://')):
                     try:
-                         domain_parts = source.split('/')
-                         domain = domain_parts[2] if len(domain_parts) > 2 else source
-                         safe_source_url = source.replace('"', '"')
-                         mermaid_string += f'      > <a href="{safe_source_url}" target="_blank">{sanitize(domain)}</a>\n'
-                    except IndexError: # Если URL некорректный (например, 'http://')
-                         mermaid_string += f"      > {sanitize(source[:60])}...\n"
+                        domain_parts = source.split('/')
+                        domain = domain_parts[2] if len(domain_parts) > 2 else source
+                        safe_source_url = source.replace('"', '&quot;')
+                        mermaid_string += f'      > <a href="{safe_source_url}" target="_blank">{sanitize_mermaid_text(domain)}</a>\n'
+                    except IndexError:
+                        mermaid_string += f"      > {sanitize_mermaid_text(source[:60])}...\n"
                 else:
-                     mermaid_string += f"      > {sanitize(source[:60])}...\n"
-
+                    mermaid_string += f"      > {sanitize_mermaid_text(source[:60])}...\n"
 
         scheme_data = {
             "type": "mermaid_mindmap",
@@ -625,16 +612,13 @@ def create_app(test_config=None):
         }
         return jsonify(scheme_data)
 
-
-    # --- Контекстный процессор для добавления переменных в шаблоны ---
     @app.context_processor
     def inject_now():
         """Делает переменную 'now' доступной во всех шаблонах."""
         return {'now': datetime.datetime.utcnow()}
 
-
-    # --- Возврат созданного приложения ---
     return app
+
 
 # --- Точка входа для запуска ---
 if __name__ == '__main__':
@@ -643,17 +627,10 @@ if __name__ == '__main__':
     port = int(os.environ.get('FLASK_PORT', 5000))
     debug_mode = os.environ.get('FLASK_DEBUG', 'False').lower() in ['true', '1', 'yes']
 
-    print(f"--- Starting Flask Application (Minimal Error Handling Mode) ---")
-    print(f"Configuration:")
-    print(f"  - Debug Mode: {'ON' if debug_mode else 'OFF'}")
-    print(f"  - Host: {host}")
-    print(f"  - Port: {port}")
-    print(f"  - AI Model: {flask_app.config.get('GOOGLE_GEMINI_MODEL')}")
-    print(f"  - Database: {flask_app.config.get('DATABASE')}")
+    logging.info("--- Starting Flask Application ---")
+    logging.info(f"Configuration: Debug Mode: {'ON' if debug_mode else 'OFF'}, Host: {host}, Port: {port}, AI Model: {flask_app.config.get('GOOGLE_GEMINI_MODEL')}, Database: {flask_app.config.get('DATABASE')}")
     if debug_mode:
-        print("\nWARNING: DEBUG MODE IS ON. DO NOT USE IN PRODUCTION.")
-    print("WARNING: Explicit error handling (try/except) in helper functions is minimized.")
-    print("         App relies on Flask's default 500 error handler for external service issues.")
-    print(f"Access the app at: http://{host}:{port}")
+        logging.warning("DEBUG MODE IS ON. DO NOT USE IN PRODUCTION.")
+    logging.info(f"Access the app at: http://{host}:{port}")
 
     flask_app.run(host=host, port=port, debug=debug_mode)
